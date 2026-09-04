@@ -5,7 +5,7 @@
 const CACHE_NAME = 'nomina-intersindical-v1';
 const ASSETS = [
   './',
-  './comprobador_nomina_intersindical_salut.html',
+  './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

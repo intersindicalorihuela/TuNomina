@@ -2,7 +2,7 @@
   "name": "Comprobador de Nómina - Intersindical Salut",
   "short_name": "Nómina ISS",
   "description": "Comprobador de nómina para el personal de Sanidad GVA 2026 - Intersindical Salut Orihuela",
-  "start_url": "./comprobador_nomina_intersindical_salut.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
