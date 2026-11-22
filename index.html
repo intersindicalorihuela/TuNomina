@@ -1259,6 +1259,57 @@ restoreFormState();
 document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calcular));
 calcular();
 applyLanguage(LANG);
+
+// ---- Importar datos del Calendario (enlace con #cal=...) ----
+(function(){
+  var IDS = ['nocheLab','nocheFest','festivo','festivoEspecial','t12NocheLab','t12NocheVispera','t12DiaFestivo','t12NocheFestivo','t12DiaEspecial','t12NocheEspecial','t12FestivoExtra'];
+  var MES = {
+    es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+    va: ['gener','febrer','març','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre']
+  };
+  function ok(n){ return typeof n === 'number' && isFinite(n) && n >= 0 && n <= 40 && Math.floor(n) === n; }
+
+  function importCal(){
+    var h = location.hash;
+    if(h.indexOf('#cal=') !== 0) return;
+    var p;
+    try{ p = JSON.parse(decodeURIComponent(h.slice(5))); }catch(e){ return; }
+    if(!p || p.v !== 1 || (p.tu !== '7' && p.tu !== '12')) return;
+
+    $('turno').value = p.tu;
+    if(ok(p.t)) $('trienios').value = p.t;
+    calcular();                                   // actualiza qué campos aplican a este puesto
+    IDS.forEach(function(id){ var el = $(id); if(el) el.value = 0; });
+    var c = p.c || {};
+    var dropped = 0;
+    IDS.forEach(function(id){ var el = $(id); if(!el || !ok(c[id])) return; if(el.disabled){ if(c[id] > 0) dropped++; } else el.value = c[id]; });
+    calcular();
+
+    var va = (LANG === 'va'), mm = /^(\d{4})-(\d{2})$/.exec(String(p.m || ''));
+    var mes = (mm && +mm[2] >= 1 && +mm[2] <= 12) ? MES[va ? 'va' : 'es'][+mm[2] - 1] + ' ' + mm[1] : '';
+    var txt = va
+      ? 'Dades importades del Calendari' + (mes ? ' (' + mes + ')' : '') + ': torn de ' + p.tu + ' hores' + (ok(p.t) ? ', ' + p.t + ' trienni(s)' : '') + '. Revisa els números abans de comprovar la teua nòmina. La carrera professional (grau) no s\'importa: tria-la segons la teua nòmina.'
+      : 'Datos importados del Calendario' + (mes ? ' (' + mes + ')' : '') + ': turno de ' + p.tu + ' horas' + (ok(p.t) ? ', ' + p.t + ' trienio(s)' : '') + '. Revisa los números antes de comprobar tu nómina. La carrera profesional (grado) no se importa: elígela según tu nómina.';
+
+    if(dropped) txt += va ? ' Atenció: ' + dropped + ' concepte(s) no s\'han aplicat perquè no existixen per al lloc seleccionat; tria el teu lloc i torna a obrir l\'enllaç.' : ' Atención: ' + dropped + ' concepto(s) no se han aplicado porque no existen para el puesto seleccionado; elige tu puesto y vuelve a abrir el enlace.';
+    var old = document.getElementById('calBanner'); if(old) old.remove();
+    var b = document.createElement('div');
+    b.id = 'calBanner';
+    b.style.cssText = 'background:var(--red-tint);border:1px solid var(--red-tint-border);border-radius:10px;padding:.7rem .9rem;margin:0 0 1rem;font-size:.85rem;line-height:1.45;display:flex;gap:.6rem;align-items:flex-start;';
+    var s = document.createElement('span'); s.style.flex = '1'; s.textContent = txt;
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Cerrar');
+    x.style.cssText = 'background:none;border:0;font-size:1.2rem;line-height:1;cursor:pointer;color:var(--red-deep);';
+    x.onclick = function(){ b.remove(); };
+    b.appendChild(s); b.appendChild(x);
+    var h2 = document.querySelector('[data-i18n="h2_complementos"]');
+    if(h2 && h2.parentNode) h2.parentNode.insertBefore(b, h2);
+    else { var r = document.getElementById('appRoot'); if(r) r.insertBefore(b, r.firstChild); }
+
+    history.replaceState(null, '', location.pathname + location.search);   // limpia el enlace
+  }
+  importCal();
+  window.addEventListener('hashchange', importCal);
+})();
 </script>
 
 
