@@ -1267,7 +1267,49 @@ applyLanguage(LANG);
     es: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
     va: ['gener','febrer','març','abril','maig','juny','juliol','agost','setembre','octubre','novembre','desembre']
   };
+  var calData = null;   // recuentos importados (se conservan para reaplicarlos si cambias de puesto)
+  var calTxt = '';
+
   function ok(n){ return typeof n === 'number' && isFinite(n) && n >= 0 && n <= 40 && Math.floor(n) === n; }
+
+  // Vuelca los recuentos en los campos que aplican al puesto actual; devuelve cuántos conceptos no aplican
+  function applyCounts(){
+    var dropped = 0;
+    IDS.forEach(function(id){
+      var el = $(id);
+      if(!el || !ok(calData[id])) return;
+      if(el.disabled){ if(calData[id] > 0) dropped++; }
+      else el.value = calData[id];
+    });
+    return dropped;
+  }
+
+  function setBanner(dropped){
+    var s = document.getElementById('calBannerTxt');
+    if(!s) return;
+    var va = (LANG === 'va');
+    var warn = dropped ? (va
+      ? ' Atenció: ' + dropped + ' concepte(s) no s\'han aplicat perquè no existixen per al lloc seleccionat; canvia de lloc i s\'actualitzaran.'
+      : ' Atención: ' + dropped + ' concepto(s) no se han aplicado porque no existen para el puesto seleccionado; cambia de puesto y se actualizarán.') : '';
+    s.textContent = calTxt + warn;
+  }
+
+  // Si cambias de puesto, reaplica los días importados con el nuevo puesto
+  function onPuestoChange(){
+    if(!calData) return;
+    calcular();                      // habilita/deshabilita los campos según el nuevo puesto
+    var d = applyCounts();
+    calcular();
+    setBanner(d);
+  }
+  // Si corriges a mano un recuento, se recuerda para no pisarlo al cambiar de puesto
+  function onCountEdit(e){
+    if(!calData) return;
+    var v = parseInt(e.target.value, 10);
+    calData[e.target.id] = (isFinite(v) && v >= 0) ? v : 0;
+  }
+  ['input','change'].forEach(function(ev){ $('puesto').addEventListener(ev, onPuestoChange); });
+  IDS.forEach(function(id){ var el = $(id); if(el) el.addEventListener('input', onCountEdit); });
 
   function importCal(){
     var h = location.hash;
@@ -1278,25 +1320,25 @@ applyLanguage(LANG);
 
     $('turno').value = p.tu;
     if(ok(p.t)) $('trienios').value = p.t;
-    calcular();                                   // actualiza qué campos aplican a este puesto
+    calcular();
     IDS.forEach(function(id){ var el = $(id); if(el) el.value = 0; });
+    calData = {};
     var c = p.c || {};
-    var dropped = 0;
-    IDS.forEach(function(id){ var el = $(id); if(!el || !ok(c[id])) return; if(el.disabled){ if(c[id] > 0) dropped++; } else el.value = c[id]; });
+    IDS.forEach(function(id){ if(ok(c[id])) calData[id] = c[id]; });
+    var dropped = applyCounts();
     calcular();
 
     var va = (LANG === 'va'), mm = /^(\d{4})-(\d{2})$/.exec(String(p.m || ''));
     var mes = (mm && +mm[2] >= 1 && +mm[2] <= 12) ? MES[va ? 'va' : 'es'][+mm[2] - 1] + ' ' + mm[1] : '';
-    var txt = va
+    calTxt = va
       ? 'Dades importades del Calendari' + (mes ? ' (' + mes + ')' : '') + ': torn de ' + p.tu + ' hores' + (ok(p.t) ? ', ' + p.t + ' trienni(s)' : '') + '. Revisa els números abans de comprovar la teua nòmina. La carrera professional (grau) no s\'importa: tria-la segons la teua nòmina.'
       : 'Datos importados del Calendario' + (mes ? ' (' + mes + ')' : '') + ': turno de ' + p.tu + ' horas' + (ok(p.t) ? ', ' + p.t + ' trienio(s)' : '') + '. Revisa los números antes de comprobar tu nómina. La carrera profesional (grado) no se importa: elígela según tu nómina.';
 
-    if(dropped) txt += va ? ' Atenció: ' + dropped + ' concepte(s) no s\'han aplicat perquè no existixen per al lloc seleccionat; tria el teu lloc i torna a obrir l\'enllaç.' : ' Atención: ' + dropped + ' concepto(s) no se han aplicado porque no existen para el puesto seleccionado; elige tu puesto y vuelve a abrir el enlace.';
     var old = document.getElementById('calBanner'); if(old) old.remove();
     var b = document.createElement('div');
     b.id = 'calBanner';
     b.style.cssText = 'background:var(--red-tint);border:1px solid var(--red-tint-border);border-radius:10px;padding:.7rem .9rem;margin:0 0 1rem;font-size:.85rem;line-height:1.45;display:flex;gap:.6rem;align-items:flex-start;';
-    var s = document.createElement('span'); s.style.flex = '1'; s.textContent = txt;
+    var s = document.createElement('span'); s.id = 'calBannerTxt'; s.style.flex = '1';
     var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Cerrar');
     x.style.cssText = 'background:none;border:0;font-size:1.2rem;line-height:1;cursor:pointer;color:var(--red-deep);';
     x.onclick = function(){ b.remove(); };
@@ -1304,8 +1346,9 @@ applyLanguage(LANG);
     var h2 = document.querySelector('[data-i18n="h2_complementos"]');
     if(h2 && h2.parentNode) h2.parentNode.insertBefore(b, h2);
     else { var r = document.getElementById('appRoot'); if(r) r.insertBefore(b, r.firstChild); }
+    setBanner(dropped);
 
-    history.replaceState(null, '', location.pathname + location.search);   // limpia el enlace
+    history.replaceState(null, '', location.pathname + location.search);
   }
   importCal();
   window.addEventListener('hashchange', importCal);
